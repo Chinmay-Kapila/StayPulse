@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-let rawBase = import.meta.env.VITE_API_URL || '/api';
+let rawBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://web-production-8f61a.up.railway.app/api' : '/api');
 if (rawBase.startsWith('http')) {
   rawBase = rawBase.replace(/\/+$/, '');
   if (!rawBase.endsWith('/api')) {
