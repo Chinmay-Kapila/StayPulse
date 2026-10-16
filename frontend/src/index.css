@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+/* Glassmorphism gradient styling matching demohotel */
+.bg-glassmorphism {
+  position: absolute;
+  inset-inline: 0;
+  top: 2.5rem;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bg-glass-blob-1 {
+  background-color: #0284c7;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 9999px;
+  mix-blend-mode: multiply;
+  filter: blur(64px);
+  opacity: 0.12;
+}
+
+.bg-glass-blob-2 {
+  background-color: #0d9488;
+  width: 24rem;
+  height: 24rem;
+  margin-left: -5rem;
+  margin-top: 10rem;
+  border-radius: 9999px;
+  mix-blend-mode: multiply;
+  filter: blur(64px);
+  opacity: 0.12;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
