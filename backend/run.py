@@ -10,5 +10,7 @@ if current_dir not in sys.path:
 from src.config import PORT, HOST
 
 if __name__ == "__main__":
-    print(f"Starting StayPulse Backend on http://{HOST}:{PORT}")
-    uvicorn.run("src.main:app", host=HOST, port=PORT, reload=False)
+    port = int(os.getenv("PORT", PORT))
+    host = os.getenv("HOST", "0.0.0.0")
+    print(f"Starting StayPulse Backend on http://{host}:{port}")
+    uvicorn.run("src.main:app", host=host, port=port, reload=False)
