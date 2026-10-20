@@ -5,6 +5,59 @@ import re
 from src.database import hotels_col, rooms_col, chains_col, serialize_doc, serialize_docs
 
 router = APIRouter(prefix="/hotels", tags=["Hotels"])
+rooms_router = APIRouter(prefix="/rooms", tags=["Rooms"])
+
+def find_room_and_hotel(room_id: str):
+    """Find room and its parent hotel, with fallback if hotel ID was provided."""
+    room = None
+    try:
+        room = rooms_col.find_one({"_id": ObjectId(room_id)})
+    except Exception:
+        pass
+    if not room:
+        room = rooms_col.find_one({"id": room_id})
+
+    if room:
+        hotel_id = room.get("hotel_id")
+        hotel = None
+        try:
+            hotel = hotels_col.find_one({"_id": ObjectId(hotel_id)})
+        except Exception:
+            pass
+        if not hotel:
+            hotel = hotels_col.find_one({"id": hotel_id})
+        return {
+            "room": serialize_doc(room),
+            "hotel": serialize_doc(hotel) if hotel else None
+        }
+
+    hotel = None
+    try:
+        hotel = hotels_col.find_one({"_id": ObjectId(room_id)})
+    except Exception:
+        pass
+    if not hotel:
+        hotel = hotels_col.find_one({"id": room_id})
+
+    if hotel:
+        rooms = list(rooms_col.find({"hotel_id": str(hotel["_id"])}))
+        first_room = rooms[0] if rooms else None
+        return {
+            "room": serialize_doc(first_room) if first_room else None,
+            "hotel": serialize_doc(hotel)
+        }
+
+    raise HTTPException(status_code=404, detail=f"No room or hotel found for ID '{room_id}'")
+
+@rooms_router.get("/{room_id}")
+def get_room_direct(room_id: str):
+    """Retrieve room and hotel by room ID for direct checkout."""
+    return find_room_and_hotel(room_id)
+
+@router.get("/rooms/{room_id}")
+def get_room_under_hotels(room_id: str):
+    """Retrieve room and hotel under /hotels/rooms/{room_id}."""
+    return find_room_and_hotel(room_id)
 
 @router.get("/cities")
 def get_cities():

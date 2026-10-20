@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 import logging
 from src.config import PORT, HOST
 from src.seed import seed_database
-from src.routes.hotels import router as hotels_router
+from src.routes.hotels import router as hotels_router, rooms_router
 from src.routes.reservations import router as reservations_router
 from src.routes.payments import router as payments_router
 from src.routes.admin import router as admin_router
@@ -38,6 +38,7 @@ app.add_middleware(
 
 # Include routes under /api
 app.include_router(hotels_router, prefix="/api")
+app.include_router(rooms_router, prefix="/api")
 app.include_router(reservations_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")

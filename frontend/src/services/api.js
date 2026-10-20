@@ -51,6 +51,31 @@ export const getHotelRooms = async (id) => {
   return response.data;
 };
 
+export const getRoomDetail = async (roomId) => {
+  try {
+    const response = await api.get(`/rooms/${roomId}`);
+    return response.data;
+  } catch (err) {
+    try {
+      const altResponse = await api.get(`/hotels/rooms/${roomId}`);
+      return altResponse.data;
+    } catch (err2) {
+      // Fallback: search across hotels directory
+      const hotels = await getHotels();
+      for (const h of hotels) {
+        const match = (h.rooms || []).find(r => (r.id === roomId || r._id === roomId));
+        if (match) {
+          return { room: match, hotel: h };
+        }
+        if (h.id === roomId || h._id === roomId) {
+          return { room: (h.rooms && h.rooms[0]) || null, hotel: h };
+        }
+      }
+      throw err;
+    }
+  }
+};
+
 // Reservation APIs
 export const createReservation = async (data) => {
   const response = await api.post('/reservations', data);

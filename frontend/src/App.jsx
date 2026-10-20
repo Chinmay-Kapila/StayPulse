@@ -8,6 +8,7 @@ import Footer from './components/Footer';
 // Pages
 import HomePage from './pages/HomePage';
 import HotelDetailPage from './pages/HotelDetailPage';
+import BookingPage from './pages/BookingPage';
 import BookingConfirmationPage from './pages/BookingConfirmationPage';
 import LookupPage from './pages/LookupPage';
 import AdminPortalPage from './pages/AdminPortalPage';
@@ -25,6 +26,8 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/hotels/:id" element={<HotelDetailPage />} />
+                <Route path="/book/:id" element={<BookingPage />} />
+                <Route path="/book/:hotelId/:roomId" element={<BookingPage />} />
                 <Route path="/confirmation/:bookingId" element={<BookingConfirmationPage />} />
                 <Route path="/lookup" element={<LookupPage />} />
                 <Route path="/admin" element={<AdminPortalPage />} />

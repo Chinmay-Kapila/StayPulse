@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getHotelDetail } from '../services/api';
-import BookingModal from '../components/BookingModal';
 import { 
   Star, MapPin, Phone, Mail, Clock, ShieldCheck, 
   Bed, Users, Check, AlertCircle, ChevronLeft, Calendar, 
@@ -10,10 +9,9 @@ import {
 
 export default function HotelDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [hotel, setHotel] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [showBookingModal, setShowBookingModal] = useState(false);
 
   // Default dates
   const today = new Date().toISOString().split('T')[0];
@@ -340,8 +338,7 @@ export default function HotelDetailPage() {
                       disabled={!isAvailable}
                       data-testid="select-slot-btn"
                       onClick={() => {
-                        setSelectedRoom(room);
-                        setShowBookingModal(true);
+                        navigate(`/book/${room.id || room._id}?checkin=${checkinDate}&checkout=${checkoutDate}`);
                       }}
                       className="px-6 py-3 rounded-full bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-sky-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center space-x-1.5"
                     >
@@ -355,17 +352,6 @@ export default function HotelDetailPage() {
           })}
         </div>
       </div>
-
-      {/* Booking Registration Modal */}
-      {showBookingModal && selectedRoom && (
-        <BookingModal
-          hotel={hotel}
-          room={selectedRoom}
-          checkinDate={checkinDate}
-          checkoutDate={checkoutDate}
-          onClose={() => setShowBookingModal(false)}
-        />
-      )}
 
     </div>
   );
