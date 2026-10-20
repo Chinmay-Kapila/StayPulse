@@ -23,7 +23,7 @@
 
 ## 🎯 Key Features Engineered for Demo & Crawler Recovery
 
-### 1. TinyFish-Friendly Machine-Readable UI
+### 1. TinyFish-Friendly Machine-Readable UI & Direct Booking Route
 All interactive elements contain structured `data-testid` attributes for headless AI browser agents:
 - `data-testid="hotel-card"`
 - `data-testid="hotel-name"`
@@ -32,9 +32,14 @@ All interactive elements contain structured `data-testid` attributes for headles
 - `data-testid="checkin-policy"` (Displays exact cut-off deadlines like `Standard Check-in: 14:00 | Desk Cut-off: 20:00`)
 - `data-testid="view-slots-btn"`
 - `data-testid="select-slot-btn"`
+- **Direct Checkout Route (`/book/:id`)**: Instead of modal popups, TinyFish can navigate directly to `https://stay-pulse.vercel.app/book/<room_id>` to fill guest details and confirm room slots.
+- `data-testid="guest-name-input"`
+- `data-testid="guest-email-input"`
+- `data-testid="guest-phone-input"`
 - `data-testid="arrival-time-select"`
 - `data-testid="payment-method-pay-at-property"`
 - `data-testid="payment-method-razorpay"`
+- `data-testid="confirm-booking-btn"` (Includes 10-second submit freeze protection)
 - `data-testid="booking-id"`
 
 ### 2. Multi-Modal Disruption & Late Check-in Hold (TripSaathi Testing)
