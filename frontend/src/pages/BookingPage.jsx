@@ -5,7 +5,7 @@ import { getRoomDetail, createReservation, verifyPayment, mockPayment } from '..
 import { 
   ChevronLeft, ShieldCheck, Clock, CreditCard, Calendar, 
   MapPin, Star, Bed, Users, Check, AlertCircle, Sparkles, 
-  CheckCircle2, ArrowRight, Lock, Phone, Mail, Building
+  CheckCircle2, ArrowRight, Lock, Phone, Mail, Building, Copy, ExternalLink, Share2
 } from 'lucide-react';
 
 export default function BookingPage() {
@@ -20,6 +20,7 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null); // { room, hotel }
   const [fetchError, setFetchError] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Default dates calculation
   const today = new Date().toISOString().split('T')[0];
@@ -29,35 +30,96 @@ export default function BookingPage() {
     return d.toISOString().split('T')[0];
   };
 
-  const initialCheckin = searchParams.get('checkin') || today;
-  const initialCheckout = searchParams.get('checkout') || defaultCheckout();
-  const initialGuests = Number(searchParams.get('guests')) || 2;
+  // Helper resolver functions for query parameters
+  const resolveArrival = (val) => {
+    if (!val) return '18:00 - 20:00';
+    const lower = String(val).toLowerCase();
+    if (lower.includes('14') || lower.includes('afternoon')) return '14:00 - 16:00';
+    if (lower.includes('16')) return '16:00 - 18:00';
+    if (lower.includes('18')) return '18:00 - 20:00';
+    if (lower.includes('late') || lower.includes('20') || lower.includes('after') || lower.includes('night')) {
+      return 'Late Arrival: After 20:00';
+    }
+    return val;
+  };
 
-  const [checkinDate, setCheckinDate] = useState(initialCheckin);
-  const [checkoutDate, setCheckoutDate] = useState(initialCheckout);
-  const [guestsCount, setGuestsCount] = useState(initialGuests);
+  const resolvePayment = (val) => {
+    if (!val) return 'PAY_AT_PROPERTY';
+    const lower = String(val).toLowerCase();
+    if (lower.includes('online') || lower.includes('razorpay') || lower.includes('card') || lower.includes('upi')) {
+      return 'ONLINE_RAZORPAY';
+    }
+    return 'PAY_AT_PROPERTY';
+  };
 
-  // Guest details pre-populated if user is logged in
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState('+91 9876543210');
+  const resolveHold = (val) => {
+    if (val !== null && val !== undefined) {
+      return ['true', '1', 'yes', 'on', 'required'].includes(String(val).toLowerCase());
+    }
+    return true; // Default to true for disruption recovery
+  };
 
-  // Recovery & Disruption parameters for TinyFish / TripSaathi
-  const [expectedArrival, setExpectedArrival] = useState('18:00 - 20:00');
-  const [lateHoldRequested, setLateHoldRequested] = useState(true);
-  const [specialRequests, setSpecialRequests] = useState('Holding check-in due to flight delay AI-804 arriving at 20:30');
+  const resolveSpecialRequests = (flight, requests) => {
+    if (requests) return requests;
+    if (flight) return `Holding check-in due to flight delay ${flight.toUpperCase()} arriving late`;
+    return 'Holding check-in due to flight delay AI-804 arriving at 20:30';
+  };
 
-  // Payment method: PAY_AT_PROPERTY or ONLINE_RAZORPAY
-  const [paymentMode, setPaymentMode] = useState('PAY_AT_PROPERTY');
+  // Extract query parameters with flexible aliases
+  const qCheckin = searchParams.get('checkin') || searchParams.get('checkin_date') || today;
+  const qCheckout = searchParams.get('checkout') || searchParams.get('checkout_date') || defaultCheckout();
+  const qGuests = Number(searchParams.get('guests') || searchParams.get('adults')) || 2;
+  const qName = searchParams.get('name') || searchParams.get('guest_name') || '';
+  const qEmail = searchParams.get('email') || searchParams.get('guest_email') || '';
+  const qPhone = searchParams.get('phone') || searchParams.get('guest_phone') || '';
+  const qArrival = searchParams.get('arrival') || searchParams.get('arrival_time') || searchParams.get('expected_arrival');
+  const qHold = searchParams.get('hold') || searchParams.get('late_hold');
+  const qFlight = searchParams.get('flight') || searchParams.get('flight_no') || searchParams.get('flight_number') || '';
+  const qRequests = searchParams.get('special_requests') || searchParams.get('request') || searchParams.get('notes');
+  const qPayment = searchParams.get('payment') || searchParams.get('payment_mode') || searchParams.get('pay');
+
+  const hasAutofillParams = Boolean(
+    qName || qEmail || qPhone || qFlight || qRequests || 
+    qArrival || searchParams.get('checkin') || searchParams.get('checkout') || qPayment
+  );
+
+  // Form states
+  const [checkinDate, setCheckinDate] = useState(qCheckin);
+  const [checkoutDate, setCheckoutDate] = useState(qCheckout);
+  const [guestsCount, setGuestsCount] = useState(qGuests);
+
+  const [name, setName] = useState(qName || user?.name || '');
+  const [email, setEmail] = useState(qEmail || user?.email || '');
+  const [phone, setPhone] = useState(qPhone || '+91 9876543210');
+
+  const [expectedArrival, setExpectedArrival] = useState(() => resolveArrival(qArrival));
+  const [lateHoldRequested, setLateHoldRequested] = useState(() => resolveHold(qHold));
+  const [specialRequests, setSpecialRequests] = useState(() => resolveSpecialRequests(qFlight, qRequests));
+  const [paymentMode, setPaymentMode] = useState(() => resolvePayment(qPayment));
+
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [freezeSeconds, setFreezeSeconds] = useState(0);
 
-  // Auto-populate when user signs in
+  // Sync state if searchParams update
+  useEffect(() => {
+    if (qName) setName(qName);
+    if (qEmail) setEmail(qEmail);
+    if (qPhone) setPhone(qPhone);
+    if (qGuests) setGuestsCount(qGuests);
+    if (searchParams.get('checkin')) setCheckinDate(qCheckin);
+    if (searchParams.get('checkout')) setCheckoutDate(qCheckout);
+    if (qArrival) setExpectedArrival(resolveArrival(qArrival));
+    if (qHold !== null && qHold !== undefined) setLateHoldRequested(resolveHold(qHold));
+    if (qRequests || qFlight) setSpecialRequests(resolveSpecialRequests(qFlight, qRequests));
+    if (qPayment) setPaymentMode(resolvePayment(qPayment));
+  }, [searchParams]);
+
+  // Auto-populate when user signs in (if fields empty)
   useEffect(() => {
     if (user) {
-      if (!name) setName(user.name || '');
-      if (!email) setEmail(user.email || '');
+      if (!name && !qName) setName(user.name || '');
+      if (!email && !qEmail) setEmail(user.email || '');
     }
   }, [user]);
 
@@ -82,7 +144,7 @@ export default function BookingPage() {
       try {
         const result = await getRoomDetail(effectiveId);
         setData(result);
-        if (result?.room?.capacity?.adults && !searchParams.get('guests')) {
+        if (result?.room?.capacity?.adults && !searchParams.get('guests') && !searchParams.get('adults')) {
           setGuestsCount(result.room.capacity.adults);
         }
       } catch (err) {
@@ -97,6 +159,32 @@ export default function BookingPage() {
       loadBookingData();
     }
   }, [effectiveId]);
+
+  // Helper to generate and copy current autofill link for TinyFish or sharing
+  const handleCopyAutofillLink = () => {
+    const origin = window.location.origin;
+    const path = `/book/${effectiveId}`;
+    const params = new URLSearchParams();
+
+    if (name) params.set('name', name);
+    if (email) params.set('email', email);
+    if (phone) params.set('phone', phone);
+    if (guestsCount) params.set('guests', guestsCount);
+    if (checkinDate) params.set('checkin', checkinDate);
+    if (checkoutDate) params.set('checkout', checkoutDate);
+    if (expectedArrival) params.set('arrival', expectedArrival);
+    params.set('hold', lateHoldRequested ? 'true' : 'false');
+    if (specialRequests) params.set('special_requests', specialRequests);
+    params.set('payment', paymentMode === 'ONLINE_RAZORPAY' ? 'online' : 'pay_at_property');
+
+    const fullUrl = `${origin}${path}?${params.toString()}`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(fullUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -261,7 +349,7 @@ export default function BookingPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
       {/* Top Navigation & Breadcrumbs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-5">
@@ -279,11 +367,55 @@ export default function BookingPage() {
           <span className="text-neutral-900 font-bold">Secure Slot Reservation</span>
         </div>
 
-        <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 self-start">
-          <Lock className="w-3.5 h-3.5 text-emerald-600" />
-          <span>256-Bit SSL Encrypted Slot Lock</span>
+        <div className="flex items-center space-x-3 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleCopyAutofillLink}
+            data-testid="copy-autofill-link-btn"
+            className="flex items-center space-x-1.5 text-xs font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 px-3 py-1.5 rounded-full transition-colors cursor-pointer border border-neutral-200"
+            title="Copy shareable autofill URL for TinyFish or trip partners"
+          >
+            {linkCopied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-emerald-700 font-bold">Link Copied!</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-3.5 h-3.5 text-neutral-500" />
+                <span>Share / Copy Autofill Link</span>
+              </>
+            )}
+          </button>
+
+          <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+            <Lock className="w-3.5 h-3.5 text-emerald-600" />
+            <span>256-Bit SSL Encrypted Slot Lock</span>
+          </div>
         </div>
       </div>
+
+      {/* Smart Autofill Notification Banner */}
+      {hasAutofillParams && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-50 via-teal-50 to-indigo-50 border border-sky-200/90 text-sky-950 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold text-neutral-900 block text-xs">Smart Autofill Active</span>
+              <span className="text-neutral-600 text-[11px]">
+                Guest details, arrival window, and flight disruption notice were pre-populated automatically via your booking link.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-sky-600 text-white px-2.5 py-1 rounded-full shadow-xs">
+              TinyFish / TripSaathi Linked
+            </span>
+          </div>
+        </div>
+      )}
 
       {errorMessage && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center space-x-2.5">
@@ -693,6 +825,40 @@ export default function BookingPage() {
 
             </div>
 
+          </div>
+
+          {/* TinyFish / TripSaathi Integration Box */}
+          <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 text-white rounded-3xl p-5 shadow-lg space-y-3.5 border border-neutral-700/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-4 h-4 text-sky-400" />
+                <span className="text-xs font-bold tracking-wide uppercase text-sky-400">Agent Autofill Link</span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">
+                TinyFish Ready
+              </span>
+            </div>
+            <p className="text-xs text-neutral-300 leading-relaxed">
+              Generate and copy a direct autofill URL with the current guest details, stay dates, and flight delay hold to feed into TinyFish browser automation.
+            </p>
+            <button
+              type="button"
+              onClick={handleCopyAutofillLink}
+              data-testid="sidebar-copy-autofill-btn"
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-md"
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-white" />
+                  <span>Autofill Link Copied to Clipboard!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy Autofill URL</span>
+                </>
+              )}
+            </button>
           </div>
 
         </div>
